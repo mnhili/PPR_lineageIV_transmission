@@ -31,7 +31,11 @@ library(bayesplot)
 ## Import data 
 
 ```{r}
-sero <- read_excel("D:/Thesis/Tasks/pprTransmission/serology_binomial_const.xlsx")
+#Manal Path
+#sero <- read_excel("D:/Thesis/Tasks/pprTransmission/serology_binomial_const.xlsx")
+# Andrea Path
+sero <- read_excel("serology_binomial_const.xlsx")
+
 head(sero)
 ```
 
@@ -42,11 +46,12 @@ head(sero)
 ```{r}
 ppr_code <- nimbleCode({
   # Prior : Uniforme
-  p ~ dunif(0, 1)
+  p ~ dunif(0.0, 0.05)
   
   # Likelihood : Bernoulli
   for (i in 1:nrow(sero)) {
-    y[i] ~ dbinom(size = n[i], prob = p)
+    p_tot[i] <- 1 - (1 - p)^t[i]
+    y[i] ~ dbinom(size = n[i], prob = p_tot[i])
   }
 })
 ```
@@ -57,7 +62,8 @@ ppr_code <- nimbleCode({
 ```{r}
 y <- sero$Positives
 n <- sero$Positives + sero$Negatives
-data = list(y=y, n=n)
+t<-sero$Time
+data = list(y=y, n=n,t=t)
 
 inits = lapply(1:10, function(i) {
   list(p = runif(1)) 
