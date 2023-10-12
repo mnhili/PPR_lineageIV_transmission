@@ -1,0 +1,307 @@
+---
+title: "Transmission proba estimation : Bayesian model on envelopes data [threshold = 0.3, cutt_off = 2 meters"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  pdf_document:
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing packages
+
+```{r }
+library(nimble)
+library(readxl)
+library(coda)
+library(ggplot2)
+library(httpgd)
+library(postpack)
+library(loo)
+library(mcmcplots)
+library(Metrics)
+library(bayesplot)
+library(ROCR)
+library(caret)
+```
+
+## Importing data
+
+```{r }
+df <- read_excel("D:/Thesis/bernoulli_data_seuil_0.3_cutt_off_2metres.xlsx")
+str(df)
+
+
+
+```
+
+## Preparing data for Nimble model
+
+```{r }
+df$distance_1 <- as.numeric(df$distance_1)
+df$distance_2 <- as.numeric(df$distance_2)
+df$distance_3 <- as.numeric(df$distance_3)
+
+df$time_1 <- as.integer(df$time_1)
+df$time_2 <- as.integer(df$time_2)
+df$time_3 <- as.integer(df$time_3)
+
+str(df)
+
+d <- df$distance_1
+y <- df$infected
+t <- df$time_1
+data <- list(y = y, d = d, t=t)
+
+d_median <- median(d)
+
+cat(d_median)
+
+```
+## Nimble code
+
+```{r }
+ppr_code <- nimbleCode({
+
+  # priors
+  p0 ~ dbeta(1,1)
+  lambda ~ dlnorm(meanlog = 1/1.277211, sdlog = 0.1)
+  
+  #likelihood
+  for(i in 1:length(y)) {
+    p[i] <- p0*exp(-lambda*d[i])
+    p_tot[i] <- 1 - (1 - p[i])^t[i]
+    y[i] ~ dbern(p_tot[i])}
+})
+
+```
+
+## Initial values for chains
+```{r pressure, echo=FALSE}
+theta_inits = lapply(1:10, function(i) {
+  list(p0 = runif(1,0.01,0.5), lambda = runif(1,0.01,0.5))
+})
+```
+
+## Compiling Nimble model
+```{r}
+ppr_mcmc <- nimbleMCMC(code = ppr_code, 
+                       data = data, 
+                       inits = theta_inits,
+                       nburnin = 1000, 
+                       monitors = c("p0", "lambda"),
+                       niter = 50000,
+                       nchains = 10,
+                       thin = 10,
+                       setSeed = 123,
+                       progressBar = TRUE,
+                       summary = TRUE,
+                       WAIC = TRUE)
+```
+
+## extracting MCMC samples for each parameters
+```{r}
+codaSamples <- post_convert(ppr_mcmc$samples)
+p0 <- codaSamples[, "p0"]
+lambda <- codaSamples[, "lambda"]
+```
+
+
+## Summary of parameter estimations
+```{r}
+summary(p0)
+```
+
+
+```{r}
+summary(lambda)
+```
+
+```{r}
+densplot(lambda)
+```
+
+```{r}
+traceplot(lambda)
+```
+
+```{r}
+densplot(p0)
+```
+
+```{r}
+traceplot(p0)
+```
+
+## Assessing Model quality using WAIC
+```{r}
+waic <- ppr_mcmc$WAIC
+waic
+```
+
+
+## Convergence Checks
+
+```{r}
+gelman.diag(lambda)
+```
+
+```{r}
+geweke.diag(lambda)
+```
+
+```{r}
+gelman.plot(p0)
+```
+
+```{r}
+geweke.plot(p0)
+```
+```{r}
+gelman.plot(lambda)
+```
+
+```{r}
+geweke.plot(lambda)
+```
+
+## Predictive checks
+
+### 1. Predictions using estimated parameters 
+
+```{r}
+lambda_mean <- mean(as.matrix(lambda))
+cat("The mean of lambda:", lambda_mean)
+```
+```{r}
+p0_mean <- mean(as.matrix(p0))
+cat("The mean of P0:", p0_mean)
+```
+```{r}
+p <- numeric(length(d))
+for(i in 1:length(d)) {
+  p[i] <- p0_mean*exp(-lambda_mean*d[i])
+}
+
+df$predictions <- p
+```
+
+
+### 2. Predictions using MCMC parameter samples and Credible intervals
+
+```{r}
+p0_samples <- as.matrix(p0)
+lambda_samples <- as.matrix(lambda)
+```
+
+
+```{r}
+p_samples <- matrix(NA, ncol = length(p0_samples), nrow = length(d))
+
+```
+
+
+```{r}
+for(i in 1:length(p0_samples)) {
+  
+  # Extract parameter draws 
+  p0 <- p0_samples[i]
+  lambda <- lambda_samples[i]
+  
+  # Calculate p for this iteration
+  p <- p0 * exp(-lambda * d)
+  
+  p_tot <- 1 - (1 - p)^t
+  
+  # Store in matrix
+  p_samples[,i] <- p_tot
+}
+```
+
+```{r}
+mean_p <- apply(p_samples, 1, mean)
+```
+
+```{r}
+sd_p <- apply(p_samples, 1, sd)
+```
+
+```{r}
+quantiles <- apply(p_samples, 1, quantile, probs = c(0.025, 0.975))
+df$TranProba <- mean_p
+df$CI_95 <- t(quantiles)
+```
+
+
+## Evaluation du modèle
+```{r}
+predicted <- df$TranProba
+actual <- df$infected
+```
+
+
+```{r}
+# Create a prediction object
+prediction <- prediction(predicted, actual)
+
+# Create a performance object to calculate ROC and AUC
+performance <- performance(prediction, "tpr", "fpr")
+```
+
+```{r}
+# Plot ROC curve
+plot(performance)
+```
+
+```{r}
+# Calculate AUC
+auc <- performance(prediction, "auc")
+cat("AUC:", auc@y.values[[1]])
+```
+```{r}
+# Access TPR and FPR values
+tpr <- performance@y.values[[1]]
+fpr <- performance@x.values[[1]]
+```
+
+
+```{r}
+threshold <- 0.5
+predicted_class <- ifelse(predicted >= threshold, 1, 0)
+
+predicted_class <- factor(predicted_class, levels = c(0, 1))
+actual <- factor(actual, levels = c(0, 1))
+
+
+
+# Create a confusion matrix
+confusion_matrix <- confusionMatrix(predicted_class, actual)
+
+# Print the confusion matrix
+print(confusion_matrix)
+```
+
+```{r}
+# Calcul de la précision
+precision <- sum(predicted_class == 1 & actual == 1) / sum(predicted_class == 1)
+cat("Précision:", precision)
+```
+
+```{r}
+# Calcul du rappel
+recall <- sum(predicted_class == 1 & actual == 1) / sum(actual == 1)
+cat("Rappel:", recall)
+```
+
+```{r}
+# Calcul du F1-score
+f1_score <- 2 * (precision * recall) / (precision + recall)
+cat("F1-score:", f1_score)
+
+```
+

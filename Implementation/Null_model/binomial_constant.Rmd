@@ -1,0 +1,243 @@
+---
+title: "Title"
+author: "Author"
+output: 
+  cleanrmd::html_document_clean:
+    theme: NULL  # see cleanrmd::cleanrmd_themes()
+                    # or set to NULL for dynamic theme picker (requires internet)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Context
+
+# Data
+
+## Import libraries
+```{r}
+library(nimble, warn.conflicts = FALSE)
+library(readxl)
+library(coda)
+library(loo)
+library(ggplot2)
+library(postpack)
+library(mcmcplots)
+library(bayesplot)
+```
+
+
+## Import data 
+
+```{r}
+sero <- read_excel("D:/Thesis/Tasks/pprTransmission/serology_binomial_const.xlsx")
+head(sero)
+```
+
+# Model
+
+## Define Nimble code
+  
+```{r}
+ppr_code <- nimbleCode({
+  # Prior : Uniforme
+  p ~ dunif(0, 1)
+  
+  # Likelihood : Bernoulli
+  for (i in 1:nrow(sero)) {
+    y[i] ~ dbinom(size = n[i], prob = p)
+  }
+})
+```
+  
+
+## Define inits and data
+
+```{r}
+y <- sero$Positives
+n <- sero$Positives + sero$Negatives
+data = list(y=y, n=n)
+
+inits = lapply(1:10, function(i) {
+  list(p = runif(1)) 
+})
+```
+
+## Define Nimble model
+```{r}
+ppr_mcmc <- nimbleMCMC(code = ppr_code,
+                      data = data,
+                      inits = inits,
+                      nburnin = 1000, 
+                      niter = 40000,
+                      nchains = 10,
+                      setSeed = 123,
+                      progressBar = TRUE,
+                      samples = TRUE,
+                      summary = TRUE,
+                      WAIC = TRUE)
+
+```
+
+
+```{r}
+codaSamples <- post_convert(ppr_mcmc$samples)
+```
+
+
+# Summary Statistics
+
+```{r}
+summary(codaSamples)
+```
+```{r}
+p_mean <- mean(as.matrix(codaSamples))
+cat("The mean probability of transmission is:", p_mean)
+```
+
+
+```{r}
+mcmc_areas(codaSamples, prob = 0.95)
+```
+
+
+```{r}
+loo_result <- loo(as.matrix(codaSamples))
+print(loo_result)
+
+```
+```{r}
+loo_result$diagnostics
+```
+
+## Plot density plots for all chains
+
+```{r}
+densplot(codaSamples)
+```
+
+# Plot trace plots for all chains
+
+```{r}
+traceplot(codaSamples)
+```
+
+
+# Convergence Diagnostics
+
+## Gelman-Rubin diagnostic
+
+
+```{r}
+gelman.diag(codaSamples)
+```
+```{r}
+gelman.plot(codaSamples)
+```
+## Geweke's convergence diagnostic
+
+```{r}
+geweke.diag(codaSamples)
+```
+
+`
+```{r}
+geweke.plot(codaSamples)
+```
+
+# Plot autocorrelation plots for all chains
+
+
+```{r}
+autocorr.plot(codaSamples)
+```
+
+
+# Effective sample size
+```{r}
+effectiveSize(codaSamples)
+
+```
+
+# Posterior predictive checks
+## Simulate replicated data
+
+```{r}
+N <- nrow(sero)
+y_rep <- numeric(N)
+for(i in 1:N){
+
+  n_i <- as.integer(sero$Positives[i] + sero$Negatives[i])
+  y_rep[i] <- rbinom(1, size=n_i, prob=p_mean)
+
+}
+```
+
+# Distribution check
+
+```{r}
+hist(y_rep)
+```
+
+```{r}
+hist(y)
+```
+
+
+```{r}
+compare_df <- data.frame(obs = y, sim = y_rep)
+compare_df
+```
+
+
+## Performance metrics
+
+```{r}
+rmse <- sqrt(mean((y - y_rep)^2)) 
+r2 <- 1 - sum((y - y_rep)^2) / sum((y - mean(y))^2)
+
+print(paste("RMSE :", rmse))
+print(paste("R-squared :", r2))
+```
+
+```{r}
+# Create a data frame for plotting
+plot_data <- data.frame(
+  Event = rep(sero$Event),
+  obs_pos = sero$Positives,
+  obs_neg = sero$Negatives,
+  sim_pos = y_rep,
+  sim_neg = n - y_rep
+)
+
+```
+
+
+# Create Q-Q plot
+
+```{r}
+ggplot(plot_data, aes(sample = obs_pos)) +
+  geom_qq(aes(sample = sim_pos), color = "blue", alpha = 0.7) +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(x = "Theoretical Quantiles (Observed)", y = "Sample Quantiles (Replicated)") +
+  ggtitle("Q-Q Plot: Observed vs. Replicated Data")
+```
+
+
+```{r}
+# Combine the datasets for comparison
+boxplot_data <- data.frame(Type = c(rep("Observed", length(y)), rep("Replicated", length(y_rep))),
+                           Values = c(y, y_rep))
+```
+
+# Create box plot
+
+```{r}
+# Create box plot with individual data points
+ggplot(boxplot_data, aes(x = Type, y = Values, fill = Type)) +
+  geom_boxplot(outlier.shape = NA) +  # Hide outlier points in the box plot
+  geom_jitter(data = boxplot_data, width = 0.2, alpha = 0.5) +  # Add individual data points
+  labs(x = "Data Type", y = "Values") +
+  ggtitle("Box Plot with Individual Data Points: Observed vs. Replicated Data")
+```

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Author" />
+  <title>Title</title>
+
+<style type="text/css" charset="utf-8">
+/* cleanrmd basic defaults */
+body {
+  /* at least one is usually overridden by the theme, but these ensure the
+  body doesn't go all the way up to the screen edge */
+  margin: 0.5em auto;
+  padding: 0.5em;
+  max-width: 48em;
+}
+code, code * { font-family: inherit; }
+
+@media only screen and (max-width: 768px) {
+  body { max-width: 100%; }
+}
+</style>
+
+  
+  <link href="binomial_constant_files/cleanrmd-0.1.1/theme-picker.css" rel="stylesheet" />
+  <script src="binomial_constant_files/cleanrmd-0.1.1/theme-picker.js"></script>
+  <script id="theme-picker-themes" type="application/json">[{"name":"almond","src":"almond/almond.css"},{"name":"awsm.css","src":"awsm.css/awsm.css"},{"name":"axist","src":"axist/axist.css"},{"name":"bamboo","src":"bamboo/bamboo.css"},{"name":"bullframe","src":"bullframe/bullframe.css"},{"name":"holiday","src":"holiday/holiday.css"},{"name":"kacit","src":"kacit/kacit.css"},{"name":"latex.css","src":"latex.css/latex.css"},{"name":"markdown-splendor","src":"markdown-splendor/markdown-splendor.css"},{"name":"markdown-retro","src":"markdown-retro/markdown-retro.css"},{"name":"markdown-air","src":"markdown-air/markdown-air.css"},{"name":"markdown-modest","src":"markdown-modest/markdown-modest.css"},{"name":"marx","src":"marx/marx.css"},{"name":"minicss","src":"minicss/minicss.css"},{"name":"new.css","src":"new.css/new.css"},{"name":"no-class","src":"no-class/no-class.css"},{"name":"picocss","src":"picocss/pico.css"},{"name":"sakura","src":"sakura/sakura.css"},{"name":"sakura-vader","src":"sakura-vader/sakura-vader.css"},{"name":"semantic","src":"semantic/semantic.css"},{"name":"simplecss","src":"simplecss/simple.css"},{"name":"style-sans","src":"style-sans/style-sans.css"},{"name":"style-serif","src":"style-serif/style-serif.css"},{"name":"stylize","src":"stylize/stylize.css"},{"name":"superstylin","src":"superstylin/superstylin.css"},{"name":"tacit","src":"tacit/tacit.css"},{"name":"vanilla","src":"vanilla/vanilla.css"},{"name":"water","src":"water/water.css"},{"name":"water-dark","src":"water-dark/water-dark.css"},{"name":"writ","src":"writ/writ.css"}]</script>
+
+<style type="text/css" charset="utf-8">
+/* cleanrmd overrides */
+img { max-width: 100%; }
+</style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: auto;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  { color: #00769e; background-color: #f1f3f5; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span { color: #00769e; } /* Normal */
+code span.al { color: #ad0000; } /* Alert */
+code span.an { color: #5e5e5e; } /* Annotation */
+code span.at { color: #657422; } /* Attribute */
+code span.bn { color: #ad0000; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #00769e; } /* ControlFlow */
+code span.ch { color: #20794d; } /* Char */
+code span.cn { color: #8f5902; } /* Constant */
+code span.co { color: #5e5e5e; } /* Comment */
+code span.cv { color: #5e5e5e; font-style: italic; } /* CommentVar */
+code span.do { color: #5e5e5e; font-style: italic; } /* Documentation */
+code span.dt { color: #ad0000; } /* DataType */
+code span.dv { color: #ad0000; } /* DecVal */
+code span.er { color: #ad0000; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #ad0000; } /* Float */
+code span.fu { color: #4758ab; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #5e5e5e; } /* Information */
+code span.kw { color: #00769e; } /* Keyword */
+code span.op { color: #5e5e5e; } /* Operator */
+code span.ot { color: #00769e; } /* Other */
+code span.pp { color: #ad0000; } /* Preprocessor */
+code span.sc { color: #5e5e5e; } /* SpecialChar */
+code span.ss { color: #20794d; } /* SpecialString */
+code span.st { color: #20794d; } /* String */
+code span.va { color: #111111; } /* Variable */
+code span.vs { color: #20794d; } /* VerbatimString */
+code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
+</style>
+<script>
+// remove everything from pandoc code styles _except_ for 'code span' colors
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      if (/^code span/.test(rule.selectorText)) {
+        j++;
+        continue;
+      }
+      sheets[i].deleteRule(j);
+    }
+  }
+})();
+</script>
+
+<style>
+code, pre { overflow: auto; }
+pre code, pre code:not([class]) { white-space: unset; }
+</style>
+
+
+</head>
+<body>
+
+
+<main>
+<header>
+<h1 id="title" class="toc-ignore">Title</h1>
+<p id="author">Author</p>
+
+</header>
+
+
+<h1 id="context">Context</h1>
+<h1 id="data">Data</h1>
+<h2 id="import-libraries">Import libraries</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nimble, <span class="at">warn.conflicts =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<pre><code>## nimble version 1.0.1 is loaded.
+## For more information on NIMBLE and a User Manual,
+## please visit https://R-nimble.org.
+## 
+## Note for advanced users who have written their own MCMC samplers:
+##   As of version 0.13.0, NIMBLE&#39;s protocol for handling posterior
+##   predictive nodes has changed in a way that could affect user-defined
+##   samplers in some situations. Please see Section 15.5.1 of the User Manual.</code></pre>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readxl)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(coda)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(loo)</span></code></pre></div>
+<pre><code>## This is loo version 2.6.0</code></pre>
+<pre><code>## - Online documentation and vignettes at mc-stan.org/loo</code></pre>
+<pre><code>## - As of v2.0.0 loo defaults to 1 core but we recommend using as many as possible. Use the &#39;cores&#39; argument or set options(mc.cores = NUM_CORES) for an entire session.</code></pre>
+<pre><code>## - Windows 10 users: loo may be very slow if &#39;mc.cores&#39; is set in your .Rprofile file (see https://github.com/stan-dev/loo/issues/94).</code></pre>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(postpack)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mcmcplots)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(bayesplot)</span></code></pre></div>
+<pre><code>## This is bayesplot version 1.10.0</code></pre>
+<pre><code>## - Online documentation and vignettes at mc-stan.org/bayesplot</code></pre>
+<pre><code>## - bayesplot theme set to bayesplot::theme_default()</code></pre>
+<pre><code>##    * Does _not_ affect other ggplot2 plots</code></pre>
+<pre><code>##    * See ?bayesplot_theme_set for details on theme setting</code></pre>
+<h2 id="import-data">Import data</h2>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>sero <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">&quot;D:/Thesis/Tasks/pprTransmission/serology_binomial_const.xlsx&quot;</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(sero)</span></code></pre></div>
+<pre><code>## # A tibble: 6 × 3
+##   Event              Positives Negatives
+##   &lt;chr&gt;                  &lt;dbl&gt;     &lt;dbl&gt;
+## 1 Experience_1_1_1h          0         6
+## 2 Experience_1_2_6h          0         6
+## 3 Experience_1_3_24h         0         6
+## 4 Experience_2_1_24h         0         6
+## 5 Experience_2_2_24h         1         5
+## 6 Experience_2_3_48h         4         2</code></pre>
+<h1 id="model">Model</h1>
+<h2 id="define-nimble-code">Define Nimble code</h2>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>ppr_code <span class="ot">&lt;-</span> <span class="fu">nimbleCode</span>({</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Prior : Uniforme</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  p <span class="sc">~</span> <span class="fu">dunif</span>(<span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Likelihood : Bernoulli</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(sero)) {</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    y[i] <span class="sc">~</span> <span class="fu">dbinom</span>(<span class="at">size =</span> n[i], <span class="at">prob =</span> p)</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<h2 id="define-inits-and-data">Define inits and data</h2>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> sero<span class="sc">$</span>Positives</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> sero<span class="sc">$</span>Positives <span class="sc">+</span> sero<span class="sc">$</span>Negatives</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>data <span class="ot">=</span> <span class="fu">list</span>(<span class="at">y=</span>y, <span class="at">n=</span>n)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>inits <span class="ot">=</span> <span class="fu">lapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="cf">function</span>(i) {</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">p =</span> <span class="fu">runif</span>(<span class="dv">1</span>)) </span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<h2 id="define-nimble-model">Define Nimble model</h2>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>ppr_mcmc <span class="ot">&lt;-</span> <span class="fu">nimbleMCMC</span>(<span class="at">code =</span> ppr_code,</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>                      <span class="at">data =</span> data,</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">inits =</span> inits,</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>                      <span class="at">nburnin =</span> <span class="dv">1000</span>, </span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>                      <span class="at">niter =</span> <span class="dv">40000</span>,</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>                      <span class="at">nchains =</span> <span class="dv">10</span>,</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>                      <span class="at">setSeed =</span> <span class="dv">123</span>,</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>                      <span class="at">progressBar =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>                      <span class="at">samples =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>                      <span class="at">summary =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>                      <span class="at">WAIC =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<pre><code>## Defining model</code></pre>
+<pre><code>## Building model</code></pre>
+<pre><code>## Setting data and initial values</code></pre>
+<pre><code>## Running calculate on model
+##   [Note] Any error reports that follow may simply reflect missing values in model variables.</code></pre>
+<pre><code>## Checking model sizes and dimensions</code></pre>
+<pre><code>## Checking model calculations</code></pre>
+<pre><code>## Compiling
+##   [Note] This may take a minute.
+##   [Note] Use &#39;showCompilerOutput = TRUE&#39; to see C++ compilation details.</code></pre>
+<pre><code>## running chain 1...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 2...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 3...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 4...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 5...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 6...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 7...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 8...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 9...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<pre><code>## running chain 10...</code></pre>
+<pre><code>## |-------------|-------------|-------------|-------------|
+## |-------------------------------------------------------|</code></pre>
+<div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>codaSamples <span class="ot">&lt;-</span> <span class="fu">post_convert</span>(ppr_mcmc<span class="sc">$</span>samples)</span></code></pre></div>
+<h1 id="summary-statistics">Summary Statistics</h1>
+<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(codaSamples)</span></code></pre></div>
+<pre><code>## 
+## Iterations = 1:39000
+## Thinning interval = 1 
+## Number of chains = 10 
+## Sample size per chain = 39000 
+## 
+## 1. Empirical mean and standard deviation for each variable,
+##    plus standard error of the mean:
+## 
+##           Mean             SD       Naive SE Time-series SE 
+##      2.393e-01      4.306e-02      6.896e-05      1.466e-04 
+## 
+## 2. Quantiles for each variable:
+## 
+##   2.5%    25%    50%    75%  97.5% 
+## 0.1610 0.2092 0.2374 0.2670 0.3292</code></pre>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>p_mean <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">as.matrix</span>(codaSamples))</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;The mean probability of transmission is:&quot;</span>, p_mean)</span></code></pre></div>
+<pre><code>## The mean probability of transmission is: 0.2393367</code></pre>
+<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mcmc_areas</span>(codaSamples, <span class="at">prob =</span> <span class="fl">0.95</span>)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-9-1.png" width="960" /></p>
+<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>loo_result <span class="ot">&lt;-</span> <span class="fu">loo</span>(<span class="fu">as.matrix</span>(codaSamples))</span></code></pre></div>
+<pre><code>## Warning: Relative effective sample sizes (&#39;r_eff&#39; argument) not specified.
+## For models fit with MCMC, the reported PSIS effective sample sizes and 
+## MCSE estimates will be over-optimistic.</code></pre>
+<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(loo_result)</span></code></pre></div>
+<pre><code>## 
+## Computed from 390000 by 1 log-likelihood matrix
+## 
+##          Estimate SE
+## elpd_loo      0.2 NA
+## p_loo         0.0 NA
+## looic        -0.5 NA
+## ------
+## Monte Carlo SE of elpd_loo is 0.0.
+## 
+## All Pareto k estimates are good (k &lt; 0.5).
+## See help(&#39;pareto-k-diagnostic&#39;) for details.</code></pre>
+<div class="sourceCode" id="cb56"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>loo_result<span class="sc">$</span>diagnostics</span></code></pre></div>
+<pre><code>## $pareto_k
+## [1] -0.0718257
+## 
+## $n_eff
+## [1] 389285.5</code></pre>
+<h2 id="plot-density-plots-for-all-chains">Plot density plots for all
+chains</h2>
+<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="fu">densplot</span>(codaSamples)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-12-1.png" width="960" /></p>
+<h1 id="plot-trace-plots-for-all-chains">Plot trace plots for all
+chains</h1>
+<div class="sourceCode" id="cb59"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="fu">traceplot</span>(codaSamples)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-13-1.png" width="960" /></p>
+<h1 id="convergence-diagnostics">Convergence Diagnostics</h1>
+<h2 id="gelman-rubin-diagnostic">Gelman-Rubin diagnostic</h2>
+<div class="sourceCode" id="cb60"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gelman.diag</span>(codaSamples)</span></code></pre></div>
+<pre><code>## Potential scale reduction factors:
+## 
+##   Point est. Upper C.I.
+## p          1          1</code></pre>
+<div class="sourceCode" id="cb62"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gelman.plot</span>(codaSamples)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-15-1.png" width="960" />
+## Geweke’s convergence diagnostic</p>
+<div class="sourceCode" id="cb63"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a><span class="fu">geweke.diag</span>(codaSamples)</span></code></pre></div>
+<pre><code>## $chain1
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##       p 
+## -0.5762 
+## 
+## 
+## $chain2
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##       p 
+## -0.6867 
+## 
+## 
+## $chain3
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##      p 
+## -1.587 
+## 
+## 
+## $chain4
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##      p 
+## -1.538 
+## 
+## 
+## $chain5
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##     p 
+## -1.82 
+## 
+## 
+## $chain6
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##       p 
+## -0.7243 
+## 
+## 
+## $chain7
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##      p 
+## -1.434 
+## 
+## 
+## $chain8
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##      p 
+## 0.3825 
+## 
+## 
+## $chain9
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##      p 
+## -1.442 
+## 
+## 
+## $chain10
+## 
+## Fraction in 1st window = 0.1
+## Fraction in 2nd window = 0.5 
+## 
+##      p 
+## -1.857</code></pre>
+<p>`</p>
+<div class="sourceCode" id="cb65"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">geweke.plot</span>(codaSamples)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-1.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-2.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-3.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-4.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-5.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-6.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-7.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-8.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-9.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-17-10.png" width="960" /></p>
+<h1 id="plot-autocorrelation-plots-for-all-chains">Plot autocorrelation
+plots for all chains</h1>
+<div class="sourceCode" id="cb66"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="fu">autocorr.plot</span>(codaSamples)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-1.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-2.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-3.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-4.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-5.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-6.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-7.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-8.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-9.png" width="960" /><img src="binomial_constant_files/figure-html5/unnamed-chunk-18-10.png" width="960" /></p>
+<h1 id="effective-sample-size">Effective sample size</h1>
+<div class="sourceCode" id="cb67"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="fu">effectiveSize</span>(codaSamples)</span></code></pre></div>
+<pre><code>##        p 
+## 86289.09</code></pre>
+<h1 id="posterior-predictive-checks">Posterior predictive checks</h1>
+<h2 id="simulate-replicated-data">Simulate replicated data</h2>
+<div class="sourceCode" id="cb69"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>N <span class="ot">&lt;-</span> <span class="fu">nrow</span>(sero)</span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>y_rep <span class="ot">&lt;-</span> <span class="fu">numeric</span>(N)</span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>N){</span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-5"><a href="#cb69-5" aria-hidden="true" tabindex="-1"></a>  n_i <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(sero<span class="sc">$</span>Positives[i] <span class="sc">+</span> sero<span class="sc">$</span>Negatives[i])</span>
+<span id="cb69-6"><a href="#cb69-6" aria-hidden="true" tabindex="-1"></a>  y_rep[i] <span class="ot">&lt;-</span> <span class="fu">rbinom</span>(<span class="dv">1</span>, <span class="at">size=</span>n_i, <span class="at">prob=</span>p_mean)</span>
+<span id="cb69-7"><a href="#cb69-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-8"><a href="#cb69-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h1 id="distribution-check">Distribution check</h1>
+<div class="sourceCode" id="cb70"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(y_rep)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-21-1.png" width="960" /></p>
+<div class="sourceCode" id="cb71"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(y)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-22-1.png" width="960" /></p>
+<div class="sourceCode" id="cb72"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a>compare_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">obs =</span> y, <span class="at">sim =</span> y_rep)</span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>compare_df</span></code></pre></div>
+<pre><code>##    obs sim
+## 1    0   2
+## 2    0   0
+## 3    0   1
+## 4    0   1
+## 5    1   2
+## 6    4   1
+## 7    2   0
+## 8    3   3
+## 9    0   1
+## 10   4   1
+## 11   0   1
+## 12   3   4
+## 13   1   3
+## 14   3   0
+## 15   1   0
+## 16   0   0</code></pre>
+<h2 id="performance-metrics">Performance metrics</h2>
+<div class="sourceCode" id="cb74"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a>rmse <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(<span class="fu">mean</span>((y <span class="sc">-</span> y_rep)<span class="sc">^</span><span class="dv">2</span>)) </span>
+<span id="cb74-2"><a href="#cb74-2" aria-hidden="true" tabindex="-1"></a>r2 <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">sum</span>((y <span class="sc">-</span> y_rep)<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> <span class="fu">sum</span>((y <span class="sc">-</span> <span class="fu">mean</span>(y))<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb74-3"><a href="#cb74-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb74-4"><a href="#cb74-4" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">&quot;RMSE :&quot;</span>, rmse))</span></code></pre></div>
+<pre><code>## [1] &quot;RMSE : 1.69558249578132&quot;</code></pre>
+<div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">&quot;R-squared :&quot;</span>, r2))</span></code></pre></div>
+<pre><code>## [1] &quot;R-squared : -0.286713286713287&quot;</code></pre>
+<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a data frame for plotting</span></span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>plot_data <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Event =</span> <span class="fu">rep</span>(sero<span class="sc">$</span>Event),</span>
+<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">obs_pos =</span> sero<span class="sc">$</span>Positives,</span>
+<span id="cb78-5"><a href="#cb78-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">obs_neg =</span> sero<span class="sc">$</span>Negatives,</span>
+<span id="cb78-6"><a href="#cb78-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim_pos =</span> y_rep,</span>
+<span id="cb78-7"><a href="#cb78-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim_neg =</span> n <span class="sc">-</span> y_rep</span>
+<span id="cb78-8"><a href="#cb78-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h1 id="create-q-q-plot">Create Q-Q plot</h1>
+<div class="sourceCode" id="cb79"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb79-1"><a href="#cb79-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(plot_data, <span class="fu">aes</span>(<span class="at">sample =</span> obs_pos)) <span class="sc">+</span></span>
+<span id="cb79-2"><a href="#cb79-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_qq</span>(<span class="fu">aes</span>(<span class="at">sample =</span> sim_pos), <span class="at">color =</span> <span class="st">&quot;blue&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb79-3"><a href="#cb79-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">intercept =</span> <span class="dv">0</span>, <span class="at">slope =</span> <span class="dv">1</span>, <span class="at">color =</span> <span class="st">&quot;red&quot;</span>) <span class="sc">+</span></span>
+<span id="cb79-4"><a href="#cb79-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Theoretical Quantiles (Observed)&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Sample Quantiles (Replicated)&quot;</span>) <span class="sc">+</span></span>
+<span id="cb79-5"><a href="#cb79-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Q-Q Plot: Observed vs. Replicated Data&quot;</span>)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-26-1.png" width="960" /></p>
+<div class="sourceCode" id="cb80"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine the datasets for comparison</span></span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>boxplot_data <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Type =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">&quot;Observed&quot;</span>, <span class="fu">length</span>(y)), <span class="fu">rep</span>(<span class="st">&quot;Replicated&quot;</span>, <span class="fu">length</span>(y_rep))),</span>
+<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a>                           <span class="at">Values =</span> <span class="fu">c</span>(y, y_rep))</span></code></pre></div>
+<h1 id="create-box-plot">Create box plot</h1>
+<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create box plot with individual data points</span></span>
+<span id="cb81-2"><a href="#cb81-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(boxplot_data, <span class="fu">aes</span>(<span class="at">x =</span> Type, <span class="at">y =</span> Values, <span class="at">fill =</span> Type)) <span class="sc">+</span></span>
+<span id="cb81-3"><a href="#cb81-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">outlier.shape =</span> <span class="cn">NA</span>) <span class="sc">+</span>  <span class="co"># Hide outlier points in the box plot</span></span>
+<span id="cb81-4"><a href="#cb81-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> boxplot_data, <span class="at">width =</span> <span class="fl">0.2</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span>  <span class="co"># Add individual data points</span></span>
+<span id="cb81-5"><a href="#cb81-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Data Type&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Values&quot;</span>) <span class="sc">+</span></span>
+<span id="cb81-6"><a href="#cb81-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Box Plot with Individual Data Points: Observed vs. Replicated Data&quot;</span>)</span></code></pre></div>
+<p><img src="binomial_constant_files/figure-html5/unnamed-chunk-28-1.png" width="960" /></p>
+
+</main>
+
+
+
+</body>
+</html>
