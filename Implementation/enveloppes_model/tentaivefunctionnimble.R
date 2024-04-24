@@ -1,13 +1,45 @@
 library(nimble)
-df<-data.frame("Id"=c("A","A","A","A","B","B","C","D","D","D"),"time"=c(10,20,5,10,5,9,15,40,20,30),"dist"=c(1,0.4,0.8,1.9,0.4,0.9,1.2,0.8,0.6,0.4),"status"=c(1,1,1,1,0,0,1,0,0,0))
+
+
+# Fake dataframe ----------------------------------------------------------
+# We have considered that 5 animals get exposed to the same infected animal.
+# Due to movement they interact differntly to the sma animlas , for differnt lenth of time and at different distance
+# We would like to estimate , à aprtir de la calibration la prob de infection
+# Considering:
+# For each animal , for each minute the probability of getting infected is :p=p0exp(-lambda*r) ou r is teh distance , `
+# and  p0 and Lambda the parameter to estimate
+# The cumulative probability for a singele animal at the end of the experience is
+# P_i=1-\Prod_j (1-p_j)^t_j
+# wher t-j is the duration of jth interval
+
+df<-data.frame("Id"=c("A","A","A","A","B","B","C","D","D","D","E","E"),"time"=c(10,20,5,10,5,9,15,40,20,30,10,5),"dist"=c(1,0.4,0.8,1.9,0.4,0.9,1.2,0.8,0.6,0.4,0.9,0.5),"status"=c(1,1,1,1,0,0,1,0,0,0,1,1))
+
+df
+# Extraction unique ids and  status
 uniqueidsta<-unique(df[c("Id","status")])
+lengthids<-length(uniqueidsta$Id)
+
+# For each id we extract the number of interval identified 
+lengthenv<-c()
+for(i in 1:nrow(uniqueidsta)){
+  id_c<-uniqueidsta[i,]$Id
+  timesid<-df[df$Id==id_c,]$time
+  lengthenv<-c(lengthenv,length(timesid))
+}  
+maxenv<-max(lengthenv) # maX number of intervals detected
 
 
-############################# 5 tentative#########################
-lengthids<-4
-lengthenv<-c(4,2,1,3)
-alltimes<-matrix(0,max(lengthenv),lengthids)
-alldist<-matrix(0,max(lengthenv),lengthids)
+# Create matrices for calculations probabilities --------------------------
+
+# Create matrices  for duration of interval and distance
+# Each lien correspond to a device 
+# The number of the column to max number of interval identified
+# The matrix will be filled with values of each interval And left 0 when data are anota vailable
+
+
+
+alltimes<-matrix(0,lengthids,maxenv)
+alldist<-matrix(0,lengthids,maxenv)
 
 for(i in 1:nrow(uniqueidsta)){
   id_c<-uniqueidsta[i,]$Id
@@ -20,13 +52,24 @@ for(i in 1:nrow(uniqueidsta)){
 
 }
 
+
+
+# Nimble function ---------------------------------------------------------
+
+############################# 5 tentative#########################
+# The function p5  creates a vector of the lenght of te number of captors 
+# each entry corresponds to  the cumulative probability f exposure
+# The function runs on each line of the alltimes matrix 
+# estimate the probability of failng for that interval 
+# and multiply with previous ones
+# tend it takes teh complementary (1-)
 p5 <- nimbleFunction(
-  run=function(alltimes=integer(2),alldist=double(2),maxlengthenv=integer(0),lengthids=integer(0),p0=double(0),lambda=double(0)) ## Vector of length 3 giving the dimensions of x
+  run=function(alltimes=integer(2),alldist=double(2),maxenv=integer(0),lengthids=integer(0),p0=double(0),lambda=double(0),pvec=double(1)) ## Vector of length 3 giving the dimensions of x
   {
-    pvec <- c(1.0,1.0,1.0,1.0)
+    
     for(i in 1:lengthids){
       p<-1.0
-      for(j in 1:maxlengthenv ){
+      for(j in 1:maxenv){
         p<-p*(1.0-p0*exp(-lambda*alldist[i,j]))^alltimes[i,j]
       }
       pvec[i]<-1.0-p
@@ -37,31 +80,31 @@ p5 <- nimbleFunction(
   }
 ) 
 
-p5(alltime=alltimes,alldist=alldist,maxlengthenv=max(lengthenv),lengthids=4,p0=0.01,lambda=0.05)  ## correct
+# Test that function in r and compiled give the same results
+p5(alltime=alltimes,alldist=alldist,maxenv=maxenv,lengthids=lengthids,p0=0.01,lambda=0.05,pvec=rep(1.0,lengthids))  ## correct
 cp5 <- compileNimble(p5, showCompilerOutput = TRUE)
-cp5(alltime=alltimes,alldist=alldist,maxlengthenv=max(lengthenv),lengthids=4,p0=0.01,lambda=0.05)  ## correct
+cp5(alltime=alltimes,alldist=alldist,maxenv=maxenv,lengthids=lengthids,p0=0.01,lambda=0.05,pvec=rep(1.0,lengthids))  ## correct
 
 
 ################################################################################
 
+# Calibration -------------------------------------------------------------
+
+
 infectionCode<- nimbleCode({
   l0 ~ dunif(0,1)
   pm0 ~ dunif(0.01,0.91)
-  p<-c(1,1,1,1)
+  pvecf<-cp5(alltime=alltimes,alldist=alldist,maxenv=maxenv,lengthids=lengthids,p0=pm0,lambda=l0,pvec=pvec0) 
  
-  for(i in 1:4){
-    p[i]<-1.0
-    for(j in 1:4 ){
-      p[i]<-p[i]*(1.0-p0*exp(-l0*alldist[i,j]))^alltimes[i,j]
-    }
-    y[i] ~ dbern(1.0-p[i])
+  for(i in 1:lengthids){
+    y[i] ~ dbern(pvecf[i])
   }
   
 })
 
 
 
-infectionConsts<-list(alltimes=alltimes,alldist=alldist)
+infectionConsts<-list(alltimes=alltimes,alldist=alldist,maxenv=maxenv,lengthids=lengthids,pvec0=rep(1.0,lengthids))
 
 infectionData<-list(y=uniqueidsta$status)
 

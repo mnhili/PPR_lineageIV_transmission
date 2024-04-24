@@ -35,7 +35,7 @@ library(dplyr)
 ## Importing data
 
 ```{r }
-df <- read_excel("D:/Thesis/bernoulli_data_seuil_0.3_cutt_off_2metres.xlsx")
+df <- read_excel("bernoulli_data_seuil_0.3_cutt_off_2metres.xlsx")
 str(df)
 
 y <- df$infected
@@ -61,14 +61,14 @@ df$time <- as.integer(df$time)
 
 ```{r}
 df$ID <- paste(df$experiment, df$contact_duration, df$collar_tag) 
-
-lst <- lapply(split(df, df$ID), function(x) {
-  list(
-    time = x$time,
-    distance = x$distance   
-    #y = x$infected
-  )
-})
+lst <- split(df, df$ID)
+# lst <- lapply(split(df, df$ID), function(x) {
+#   list(
+#     time = x$time,
+#     distance = x$distance,   
+#     y = x$infected
+#   )
+# })
 
 ```
 

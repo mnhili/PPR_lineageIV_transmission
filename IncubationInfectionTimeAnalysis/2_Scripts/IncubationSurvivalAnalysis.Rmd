@@ -1,0 +1,132 @@
+---
+title: "EstimationIncubatonTime"
+author: "Andrea Apolloni"
+date: "2024-04-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r pacakges}
+library(readxl)
+library(survival)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(ggsurvfit)
+library("survminer")
+```
+## Introduction
+
+In this document  we  estimate  the incubation period for teh animal exposed using data  from the  follow up study of the exposed animals. 
+
+We used data stored in the file "2021 PPR transmission protocols.xlsx".
+
+In the data several symptoms columns are reported : day_symptoms,day_sero,day_viro, death
+For each animal we consider as  symptom day the minimal among them
+
+We supposed that the follow up lasted  3 weeks 
+We consider status 1 individuals positive  and 0 censored or alive animals
+
+We analysed  in two ways :
+  - Censoring data:  Including animals that doesn't show symptoms and are negative 
+  - Only Positive animals: only animals tested positive are considered
+  
+The choice of the analysis will be made after discussion on the protocol used : if all the animals have been tested at the end of the experimentation and tested negative we will used the censor approach ; otherwise if only animals with symptoms have been tested  the second will be used
+
+```{r cars}
+data<-read_xlsx("../1_Data/2021 PPR transmission protocols.xlsx",sheet = "all_data")
+```
+
+## Preparing data
+
+Dataset have been changed to reduced in the format :
+  -Id, 
+  -experiment , 
+  -Exposure duration , 
+  -Starting follow up date , 
+  -Date of symptoms,
+  -Time To symptoms, 
+  -Status
+
+For starting data we considered  the day of the experimentation + days of Exposure duration 
+For censored data , we put date of symptoms 3 weeks after the follow up
+
+
+```{r pressure, echo=FALSE}
+data_an<-data %>%
+    filter( seed != 1)%>%
+    select(animal_id,experiment,date,contact_duration,day_symptoms,day_viro,death,day_sero,infected)
+    data_an$date<- as.Date(data_an$date, origin = "01-01-1900", format = "%d-%m-%Y")
+    data_an$day_symptoms<- as.Date(as.numeric(as.character(data_an$day_symptoms)), origin = "01-01-1900", format = "%d-%m-%Y")
+    data_an$day_viro<- as.Date(as.numeric(as.character(data_an$day_viro)), origin = "01-01-1900", format = "%d-%m-%Y")
+    data_an$death<- as.Date(as.numeric(as.character(data_an$death)), origin = "01-01-1900", format = "%d-%m-%Y")
+    data_an$day_sero<- as.Date(as.numeric(as.character(data_an$day_sero)),origin = "01-01-1900", format = "%d-%m-%Y")
+data_an$datapos<-pmin(data_an$death,data_an$day_viro,data_an$day_sero,data_an$day_symptoms, na.rm=T)
+data_an<-data_an%>%
+  mutate(followup=case_when(contact_duration=="24h"~date+1,
+            contact_duration=="44h"~date+2,
+            contact_duration=="48h"~date+2,
+            contact_duration=="1h"~date, 
+            contact_duration=="6h"~date,
+            contact_duration=="8h"~date))%>%
+  mutate(timetosymp=ifelse(is.na(datapos-followup),Inf,datapos-followup))%>%
+  mutate(status=ifelse(infected=="NA",0,1))%>%
+  mutate(exposure_group=ifelse(contact_duration=="48h"|contact_duration=="44h",">24h",ifelse(contact_duration=="24h","24h","<24h")))%>%
+  select(animal_id,exposure_group,timetosymp,status)
+  
+```
+
+We now proceeed to the survival analysis for the data
+
+## Survival analysis with censored data
+
+in this case we also considered the censored data . This suppose that all teh animals have been tested and resulted negatif
+
+```{r survival analysis with censored data}
+survcens<-survfit(Surv(timetosymp, status) ~ 1, data = data_an)
+
+survfit2(Surv(timetosymp, status) ~ 1, data = data_an) %>% 
+  ggsurvfit() +
+  labs(
+    x = "Days",
+    y = "Overall survival probability"
+  )+ 
+  add_confidence_interval() +
+  add_risktable()
+```
+
+```{r median survival time}
+data_an %>% 
+  filter(status == 1) %>% 
+  summarize(median_surv = median(timetosymp))
+```
+
+
+```{r survival analysis ignring censored data}
+survcens_ign<-survfit(Surv(timetosymp) ~ 1, data = data_an)
+
+
+ggsurvplot_combine(list(correct = survcens, wrong = survcens_ign),data=data_an,xlim=c(0,40))
+
+```
+
+```{r survival analysis with censored data icluding exposure}
+survcens2<-survfit(Surv(timetosymp, status) ~ exposure_group, data = data_an)
+
+survfit2(Surv(timetosymp, status) ~exposure_group, data = data_an) %>% 
+  ggsurvfit() +
+  labs(
+    x = "Days",
+    y = "Overall survival probability"
+  )
+```
+
+
+```{r survival analysis excluding censored data icluding exposure}
+survcens2_ign<-survfit(Surv(timetosymp) ~ exposure_group, data = data_an)
+
+ggsurvplot_combine(list(correct = survcens2, wrong = survcens2_ign),data=data_an,xlim=c(0,40))
+```

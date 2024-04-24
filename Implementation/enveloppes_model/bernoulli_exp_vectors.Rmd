@@ -35,7 +35,7 @@ library(dplyr)
 ## Importing data
 
 ```{r }
-df <- read_excel("D:/Thesis/bernoulli_data_seuil_0.3_cutt_off_2metres.xlsx")
+df <- read_excel("bernoulli_data_seuil_0.3_cutt_off_2metres.xlsx")
 str(df)
 
 y <- df$infected
@@ -63,6 +63,8 @@ df$time <- as.integer(df$time)
 t <- df$time
 d <- df$distance
 env <- replicate(34, 3)
+begin<-seq(1,3*34+1,by=3)[1:34]
+end<-seq(3,3*(34+1),by=3)[1:34]
 ```
 
 
@@ -103,11 +105,60 @@ ppr_code <- nimbleCode({
   
   for(e in env){
     fine <- counter + e - 1
-    probinsucind <- probinsuc[counter:fine]
+    probinsucind <- c()
+    for(k in counter:fine){
+      probinsucind <- c(probinsucind,probinsuc[k])
+    }
+    
     pind <- 1 - prod(probinsucind)
     probind <- c(probind, pind)
     counter <- counter + e
   }
+  
+  # likelihood
+  
+  for(i in 1:length(y)){
+    
+    y[i] ~ dbern(probind[i])
+    
+  }
+})
+```
+
+```{r}
+ppr_code2 <- nimbleCode({
+  
+  # priors
+  p0 ~ dbeta(1, 1)
+  lambda ~ dlnorm(meanlog = - 1.21812, sdlog = 0.1)
+  
+  # model
+  
+  probinsuc <- c()
+  
+  for(j in 1:length(t)){
+    l <- as.integer(j)
+    pl <- (1 - p0 * exp(-lambda * d[l]))^t[l]
+    probinsuc <- c(probinsuc, pl)
+  }
+  
+  probind <- c()
+
+
+
+for(counter in 1:length(begin)){
+  
+  e<-end[counter]
+  b<-begin[counter]
+  probinsucind <-c()
+  for(k in b:e){
+    probinsucind <- c(probinsucin,probinsuc[k])
+  }
+  
+  pind <- 1 - prod(probinsucind)
+  probind <- c(probind, pind)
+  
+}
   
   # likelihood
   
@@ -127,7 +178,7 @@ theta_inits = lapply(1:10, function(i) {
   list(p0 = runif(1,0.001,0.015), lambda = runif(1,0.001,0.0015))
 })
 
-data = list(y = y, d=d, t=t, env = env)
+data = list(y = y, d=d, t=t, env = env,begin=begin,end=end)
 
 ```
 
@@ -135,7 +186,7 @@ data = list(y = y, d=d, t=t, env = env)
 ## Fitting the model to data
 
 ```{r}
-ppr_mcmc <- nimbleMCMC(code = ppr_code, 
+ppr_mcmc <- nimbleMCMC(code = ppr_code2, 
                        inits = theta_inits,
                        data = data,
                        nburnin = 1000, 
