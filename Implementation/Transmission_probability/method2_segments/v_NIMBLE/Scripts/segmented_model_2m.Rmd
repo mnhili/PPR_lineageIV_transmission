@@ -1,0 +1,501 @@
+---
+title: "Modèle de probabilité de transmission : distance 2m"
+author: "Manal NHILI"
+output: 
+ html_document:
+    theme: paper
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    toc: yes
+    number_sections: yes
+    always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE, 
+  warning = FALSE
+)
+```
+
+
+# Import libraries
+```{r }
+# Reporting
+library(knitr) # R code chunking in documents
+library(rmarkdown) # Dynamic report generation
+
+# Visualization 
+library(ggplot2) # Graphing/visualization
+library(DT) # Interactive HTML tables
+library(gt) # Nicely formatted plain tables
+library(httpgd) # HTTP graphics device
+
+# Bayesian Modeling & MCMC
+library(nimble) # Building MCMC models  
+library(coda) # MCMC diagnostics
+library(bayesplot) # MCMC diagnostics
+library(postpack) # Post-processing MCMC draws
+library(loo) # Leave-one-out cross validation
+library(mcmcplots) # MCMC traceplots  
+
+# Model Evaluation
+library(Metrics) # Model evaluation metrics
+library(ROCR) # Model performance visualization
+library(caret) # Machine learning model evaluation
+
+# Data Wrangling
+library(tidyr) # Data tidying
+library(dplyr) # Data manipulation
+library(readxl) # Excel data I/O
+```
+
+
+# Import data 
+
+```{r}
+sero <- read_excel("D:/segmented_model/model_2m/data_seg_2m.xlsx")
+datatable(sero)
+```
+
+
+```{r}
+ggplot(sero, aes(x = factor(infected))) +
+  geom_bar(aes(fill = factor(infected)), position = "dodge") +
+  labs(title = "Distribution of observational data : infectious status", x = "Value", y = "Count") +
+  scale_fill_manual(values = c("0" = "blue", "1" = "red")) +
+  theme_minimal()
+
+```
+
+# Model
+
+## Define Nimble code
+
+```{r eval=FALSE}
+y <- sero$infected
+t<-sero$time
+
+data = list(y=y, t=t)
+
+```
+  
+
+```{r eval=FALSE}
+code <- nimbleCode({
+
+  # Priors
+  p ~ dunif(0.0005, 0.01)
+
+  # Boucle sur les observations
+  for (i in 1:nrow(sero)) {
+    
+    p_ind[i] <- 1- (1 - p)^t[i]
+    
+    y[i] ~ dbern(p_ind[i])
+
+  }
+  
+})
+```
+
+## Define initial values per chains 
+
+```{r eval=FALSE}
+# Valeurs initiales
+inits = lapply(1:5, function(i){
+
+  list(
+    p = runif(1, 0.0005, 0.01)
+  )
+
+})
+```
+
+
+## Hyperparameters tuning
+
+Tuning hyperparameters of the model by defining a grid of values and fitting the model for each combination of hyperparameters and keeping the one that gives the lowest WAIC. 
+```{r eval=FALSE}
+
+# Define parameter grids to search over
+niter_grid = c(10000, 50000, 100000)
+thin_grid = c(1, 5, 10) 
+burnin_grid = c(100, 500, 1000, 5000)
+
+# Function to fit model and compute WAIC
+fit_and_compare <- function(niter, thin, burnin) {
+
+  # Fit model using MCMC
+  ppr_mcmc <- nimbleMCMC(code = code,
+                      data = data,
+                      inits = inits,
+                      thin = thin,
+                      niter = niter,
+                      nburnin = burnin, 
+                      nchains = 5,
+                      monitors = list("p"),
+                      setSeed = 123,
+                      progressBar = TRUE,
+                      samples = TRUE,
+                      summary = TRUE,
+                      WAIC = TRUE)
+
+  # Compute WAIC 
+  waic <- ppr_mcmc$WAIC$WAIC
+  
+  # Return WAIC
+  return(waic)
+}
+
+
+```
+
+
+```{r eval=FALSE}
+# Vecteur pour stocker tous les WAIC
+waics <- numeric(length(niter_grid)*length(thin_grid)*length(burnin_grid))
+
+# Compteur pour index dans waics
+count <- 1  
+
+# Tester toutes les combinaisons 
+for(niter in niter_grid) {
+  for(thin in thin_grid) {
+    for(burnin in burnin_grid) {
+      
+        waic <- fit_and_compare(niter, thin, burnin)
+        
+        # Stocker ce WAIC
+        waics[count] <- waic
+        count <- count + 1
+      } 
+    }
+  }
+
+
+```
+## Getting the best combination of hyperparameters
+
+```{r eval=FALSE}
+# Trouver l'index du meilleur WAIC  
+best <- which.min(waics)
+
+# Extraire les meilleurs paramètres
+iter_index <- ((best - 1) %/% (length(thin_grid) * length(burnin_grid))) + 1
+thin_index <- ((best - 1) %/% length(burnin_grid)) %% length(thin_grid) + 1 
+burnin_index <- ((best - 1) %% length(burnin_grid)) + 1
+
+best_niter <- niter_grid[iter_index]
+best_thin <- thin_grid[thin_index]
+best_burnin <- burnin_grid[burnin_index]
+
+
+# Afficher de façon formatée
+cat("Best Hyperparameters :", "\n")  
+cat(paste0("Niter : ", best_niter, "\n"))
+cat(paste0("Thin : ", best_thin, "\n")) 
+cat(paste0("Burnin : ", best_burnin, "\n"))
+```
+
+## Fitting model with best combination of hyperparameters
+
+```{r eval=FALSE}
+ppr_mcmc <- nimbleMCMC(code = code,
+                      data = data,
+                      inits = inits,
+                      thin = best_thin,
+                      nburnin = best_burnin, 
+                      monitors = list("p", "p_ind"),
+                      niter = best_niter,
+                      nchains = 5,
+                      setSeed = 123,
+                      progressBar = TRUE,
+                      samples = TRUE,
+                      summary = TRUE,
+                      WAIC = TRUE)
+
+```
+
+
+```{r}
+#save(ppr_mcmc, inits, file = "p_samples_2m.RData")
+```
+
+```{r}
+load("p_samples_2m.RData")
+```
+
+
+```{r}
+theta_inits <- as.data.frame(inits)
+
+new_names = paste0("chain_", 1:5)
+
+# Change colnames
+colnames(theta_inits) = new_names[1:5]
+
+gt(theta_inits) %>% 
+  tab_header(title = "initial values for MCMC chains")
+```
+
+
+
+```{r}
+waic <- ppr_mcmc$WAIC$WAIC
+cat(waic)
+```
+
+```{r}
+codaSamples <- post_convert(ppr_mcmc$samples)
+p <- codaSamples[, "p"]
+```
+
+# Visualization:
+
+We plot the density of the posterior and the trace plot of the chains.
+
+
+## Density plot
+
+```{r}
+densplot(p)
+```
+
+## Trace plot
+
+```{r}
+traceplot(p)
+```
+
+
+
+# Assessing model fit quality using WAIC
+
+```{r}
+waic <- ppr_mcmc$WAIC
+waic
+```
+
+# Summary Statistics
+
+```{r}
+summary(p)
+```
+
+```{r}
+loo_result <- loo(as.matrix(p))
+print(loo_result)
+
+```
+
+```{r}
+loo_result$diagnostics
+```
+# Convergence Diagnostics
+
+## Gelman-Rubin diagnostic
+
+The Potential Scale Reduction Factor (PSRF), also known as the **Gelman-Rubin diagnostic** $(\hat{R})$, is a widely used metric for assessing the convergence of Markov Chain Monte Carlo (MCMC) chains in Bayesian analysis. A PSRF equal to 1 is indicative of well-converged chains. The diagnostic compares the variability within each chain to the variability between chains. A value of 1 suggests that the chains have reached a common distribution and have effectively explored the parameter space. In our analysis, the PSRF being equal to 1 provides confidence in the convergence of the MCMC chains, indicating that the chains have reached a stable and consistent estimate of the target distribution.
+
+```{r}
+gelman.diag(p)
+```
+
+```{r}
+gelman.plot(p)
+```
+
+## Geweke's convergence diagnostic
+
+The **Geweke's convergence diagnostic** was applied to assess the convergence of multiple MCMC chains. The diagnostic involves dividing each chain into two windows (typically the first 10% and the last 50% of iterations) and comparing the means of these segments using a z-score. A small z-score and comparable fractions in the two windows indicate convergence.
+
+```{r}
+geweke.diag(p)
+```
+
+```{r}
+geweke.plot(p)
+```
+
+# Plot autocorrelation plots for all chains
+
+Autocorrelation plots were generated to assess the correlation between successive observations in each Markov Chain Monte Carlo (MCMC) chain. The plots below illustrate the autocorrelation function (ACF) for the parameter $p$ in each chain.
+
+```{r}
+autocorr.plot(p)
+```
+
+# Effective sample size
+
+The **effective sample size (ESS)** is a metric used in the context of Markov Chain Monte Carlo (MCMC) sampling to quantify the amount of information or independence captured by the samples. It provides an estimate of how many independent samples in the Markov chain are equivalent to the autocorrelated samples obtained.
+
+$$
+ESS = \frac{n}{1 + 2\sum_{t=1}^{T} \rho_t}
+$$
+In this formula:
+
+-   $ESS$ is the effective sample size.
+
+-   $n$ is the total number of samples.
+
+-   $ρ_t$ is the autocorrelation at lag $t$.
+
+-   $T$ is the maximum lag considered in the autocorrelation calculation.
+
+An ESS of 5548.339 suggests good mixing and provides a reasonable estimate of the effective information content in our MCMC samples for the variable **`p`**.
+
+```{r}
+cat(effectiveSize(p)) 
+
+```
+
+# Posterior predictive check
+
+```{r}
+p_samples <- sample(as.matrix(p), 1000)
+
+```
+
+```{r}
+n_ind <- nrow(sero)
+n_iter <- length(p_samples)
+
+p_ind_samples <- matrix(NA, nrow = n_ind, ncol = n_iter)
+aucs <- numeric(n_iter)
+
+sens <- numeric(n_iter)
+
+
+for(j in 1:n_iter){
+
+  p_j <- p_samples[j]
+  
+  p_ind_j <- numeric(n_ind)
+
+  for(i in 1:n_ind){
+
+    t_i = sero$time[i] 
+    p_ind_j[i] <- 1 - (1 - p_j)^t_i
+
+  }
+  p_ind_samples[,j] <- p_ind_j
+  
+  prediction <- prediction(p_ind_j, sero$infected)
+  
+  auc <- performance(prediction, "auc")@y.values[[1]]
+  sensi <- performance(prediction, "sens")@y.values[[1]]
+  
+  
+  aucs[j] <- auc
+  
+  sens[j] <- sensi
+
+}
+```
+
+```{r}
+p_means = apply(p_ind_samples, 1, mean)
+```
+
+```{r}
+sd_p <- apply(p_ind_samples, 1, sd)
+```
+
+```{r}
+Q2.5 <- apply(p_ind_samples, 1, quantile, probs = 0.025)
+Q97.5 <- apply(p_ind_samples, 1, quantile, probs = 0.975)
+```
+
+```{r}
+summary_df <- data.frame(Captor = sero$Cap2, 
+                         Obs = sero$infected, 
+                         Pred = p_means, 
+                         SD = sd_p, 
+                         Q2.5 = Q2.5,
+                         Q97.5 = Q97.5
+                         )
+
+datatable(summary_df)
+```
+
+# Model performance check
+
+```{r}
+pred <- summary_df$Pred
+obs <- summary_df$Obs
+
+# Create a prediction object
+prediction <- prediction(pred, obs)
+
+# Create a performance object to calculate ROC and AUC
+performance <- performance(prediction, "tpr", "fpr")
+
+# Extract ROC data
+roc_data <- data.frame(
+  FPR = performance@x.values[[1]],
+  TPR = performance@y.values[[1]]
+)
+
+# Plot ROC curve using ggplot2
+ggplot(roc_data, aes(x = FPR, y = TPR)) +
+  geom_line() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  labs(title = "ROC Curve", x = "False Positive Rate", y = "True Positive Rate") +
+  theme_minimal()
+```
+
+```{r}
+# Calculate AUC
+auc <- performance(prediction, "auc")
+cat("AUC:", auc@y.values[[1]])
+```
+
+```{r}
+
+# Sensitivity / Specificity curve 
+
+perf <- performance(prediction, "sens", "spec")
+perf
+plot(perf)
+
+```
+
+
+```{r}
+# precision / recall curve
+
+perf <- performance(prediction, "prec", "rec")
+
+perf
+plot(perf
+     )
+```
+
+
+# Some other evaluation metrics and confusion matrix
+
+Since the outcome variable of infection status is binary (infected or not infected), we transformed the estimated probability values into discrete classifications for analysis. Infection probabilities ranging from 0 to 0.5 were designated as class 0 (uninfected) while probabilities from 0.5 to 1 were assigned as class 1 (infected). This divides the probability continuum at the 0.5 threshold to categorize the predictions.
+
+```{r}
+threshold <- 0.5
+predicted_class <- ifelse(pred >= threshold, 1, 0)
+
+predicted_class <- factor(predicted_class, levels = c(0, 1))
+obs <- factor(obs, levels = c(0, 1))
+
+# Create a confusion matrix
+confusion_matrix <- confusionMatrix(predicted_class, obs)
+
+plot(confusion_matrix$table, 
+     colorRampPalette(colors = c("darkblue","grey","orange"))(100))
+
+# Print the confusion matrix
+print(confusion_matrix)
+```
+
+
+
+

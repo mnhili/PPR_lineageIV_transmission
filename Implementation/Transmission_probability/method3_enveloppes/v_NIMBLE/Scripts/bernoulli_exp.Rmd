@@ -1,0 +1,510 @@
+---
+title: "Transmission proba estimation : Bayesian model on envelopes data [threshold = 0.3, cutt_off = 2 meters"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  pdf_document:
+    toc: yes
+    highlight: zenburn
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing packages
+
+```{r , include=FALSE}
+library(nimble)
+library(readxl)
+library(coda)
+library(ggplot2)
+library(httpgd)
+library(postpack)
+library(loo)
+library(mcmcplots)
+library(Metrics)
+library(bayesplot)
+library(ROCR)
+library(caret)
+library(tidyr)
+library(dplyr)
+library(writexl)
+```
+
+## Importing data
+
+```{r }
+df <- read_excel("C:/Users/manhi/OneDrive/Bureau/enveloppes_data/under_15m/enveloppe9_0.3.xlsx")
+
+```
+
+
+
+```{r}
+exp = unique(df$experiment)
+contact = unique(df$contact_duration)
+
+```
+
+```{r}
+nrows <- nrow(df)
+ncols <- ncol(df)
+```
+
+
+```{r}
+model <- nimbleCode({
+  
+  # Priors
+  p0 ~ dbeta(1, 1)
+  lambda ~ dlnorm(-1.248115, 0.1)
+  p_i <- numeric(100) 
+  
+  # Boucle sur les données
+  for(e in 1:length(exp)){
+    for(c in 1:length(contact)){
+      
+      # Sous ensemble des données    
+      df_temp <- df[df$experiment == exp[e] & 
+                     df$contact_duration == contact[c], ]
+                     
+      ids <- unique(df_temp$cap_ID)
+      
+      for(id in 1:length(ids)){
+        
+        datai <- df_temp[df_temp$cap_ID == ids[id], ]  
+        p_i[1] <- 1
+        
+        for(l in 1:nrow(datai)){
+        
+          p_temp <- (1 - (p0 * exp(-lambda * datai$distance[l])))^datai$time[l]
+          p_i[l] <- p_i[l-1] * p_temp
+          
+        }
+        
+        p <- 1 - p_i[length(p_i)]
+        
+        y_obs[id] ~ dbern(p)  
+        
+      }
+      
+    }
+  }
+  
+})
+
+```
+
+## Initial values for chains
+```{r pressure, echo=FALSE}
+theta_inits = lapply(1:10, function(i) {
+  list(p0 = runif(1,0.001,0.015), lambda = runif(1,0.001,0.0015))
+})
+```
+
+## Compiling Nimble model
+```{r}
+ppr_mcmc <- nimbleMCMC(code = model, 
+                       data = list(y = y), 
+                       dimensions = list(df = c(1857, 5), df_temp = c(nrows, ncols) ),
+                       inits = theta_inits,
+                       nburnin = 1000, 
+                       monitors = c("p0", "lambda"),
+                       niter = 50000,
+                       nchains = 10,
+                       thin = 10,
+                       setSeed = 123,
+                       progressBar = TRUE,
+                       summary = TRUE,
+                       WAIC = TRUE)
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+```{r}
+# Trouver les noms de colonnes à remplacer
+cols <- names(df)[grepl("Duree_min_", names(df))]
+
+# Créer les nouveaux noms
+new_cols <- sub("Duree_min_", "time_", cols)
+
+# Renommer les colonnes
+names(df)[names(df) %in% cols] <- new_cols
+
+
+```
+
+
+```{r}
+cols <- names(df)[grepl("Distance Mediane_", names(df))]
+
+# Créer les nouveaux noms
+new_cols <- sub("Distance Mediane_", "distance_", cols)
+
+# Renommer les colonnes
+names(df)[names(df) %in% cols] <- new_cols
+```
+
+
+
+
+```{r}
+
+df_long <- df %>%
+  pivot_longer(cols = c(matches("^distance_"), matches("^time_")),
+               names_to = ".value",
+               names_pattern = "([A-Za-z]+)_")
+
+
+head(df_long)
+```
+
+
+```{r}
+df_long <- na.omit(df_long)
+```
+
+
+
+```{r}
+write_xlsx(df_long, "C:/Users/manhi/OneDrive/Bureau/enveloppes_data/under_15m/enveloppe9_0.3_pivot.xlsx")
+```
+
+
+## Preparing data for Nimble model
+
+```{r }
+df$distance_1 <- as.numeric(df$distance_1)
+df$distance_2 <- as.numeric(df$distance_2)
+df$distance_3 <- as.numeric(df$distance_3)
+
+df$time_1 <- as.integer(df$time_1)
+df$time_2 <- as.integer(df$time_2)
+df$time_3 <- as.integer(df$time_3)
+
+str(df)
+
+d_1 <- df$distance_1
+d_2 <- df$distance_2
+d_3 <- df$distance_3
+
+t_1 <- df$time_1
+t_2 <- df$time_2
+t_3 <- df$time_3
+
+y <- df$infected
+
+data <- list(y = y, d_1 = d_1, d_2 = d_2, d_3 = d_3, t_1 = t_1, t_2 = t_2, t_3 = t_3)
+
+mean_d1 <- mean(d_1)
+mean_d2 <- mean(d_2)
+mean_d3 <- mean(d_3)
+
+cat(mean_d1)
+cat(mean_d2)
+cat(mean_d3)
+
+```
+
+## Nimble code
+
+```{r}
+exp <- unique(df$experiment)
+contact <- unique(df$contact_duration)
+```
+
+```{r}
+for(e in exp){
+  for(c in contact){
+    df_temp <- df[df$experiment == e & df$contact_duration ==c ,]
+    ids <- unique(df_temp$collar_tag)
+    for(i in ids){
+      datai <- df_temp[df_temp$collar_tag == i,]
+      print(datai)
+    }
+  }
+}
+```
+
+```{r}
+code <- nimbleCode({
+
+  # priors
+  p0 ~ dbeta(1, 1)
+  lambda ~ dlnorm(meanlog = - 1.248115, sdlog = 0.1)
+  
+  #model
+  
+  for(e in exp){
+  for(c in contact){
+    df_temp <- df[df$experiment == e & df$contact_duration ==c , 1:34]
+    ids <- unique(df_temp$collar_tag)
+    for(id in ids){
+      datai <- df_temp[df_temp$collar_tag == id, 1:34]
+      p[i] <- 1 
+      t <- datai$time
+      d <- datai$distance
+      
+      for( l in 1:length(t)){
+        ptemp <- (1 - p0 * exp(-lambda * d[l])) ^ t[l]
+        p[i] <- p[i] * ptemp
+        } 
+      
+      p[i] <- 1 - p[i]
+      
+      # Likelihood 
+      
+      y[i] ~ dbern(p[i])
+    }
+    
+  }
+    
+  }
+
+})
+
+```
+
+
+```{r }
+ppr_code <- nimbleCode({
+
+  # priors
+  p0 ~ dbeta(1, 1)
+  lambda ~ dlnorm(meanlog = - 1.248115, sdlog = 0.1)
+  
+  #likelihood
+  for(i in 1:length(y)) {
+    p_1[i] <- p0*exp(-lambda*d_1[i])
+    p_2[i] <- p0*exp(-lambda*d_2[i])
+    p_3[i] <- p0*exp(-lambda*d_3[i])
+    
+    p[i] <- (1 - p_1[i])^t_1[i] * (1 - p_2[i])^t_2[i] * (1 - p_3[i])^t_3[i]
+      
+    p_tot[i] <- 1 - p[i] 
+    
+    y[i] ~ dbern(p_tot[i])}
+})
+
+```
+
+## Initial values for chains
+```{r pressure, echo=FALSE}
+theta_inits = lapply(1:10, function(i) {
+  list(p0 = runif(1,0.001,0.015), lambda = runif(1,0.001,0.0015))
+})
+```
+
+## Compiling Nimble model
+```{r}
+ppr_mcmc <- nimbleMCMC(code = code, 
+                       data = list(y = y), 
+                       inits = theta_inits,
+                       nburnin = 1000, 
+                       monitors = c("p0", "lambda", "p_tot"),
+                       niter = 50000,
+                       nchains = 10,
+                       thin = 10,
+                       setSeed = 123,
+                       progressBar = TRUE,
+                       summary = TRUE,
+                       WAIC = TRUE)
+```
+
+## extracting MCMC samples for each parameters
+```{r}
+codaSamples <- post_convert(ppr_mcmc$samples)
+p0 <- codaSamples[, "p0"]
+lambda <- codaSamples[, "lambda"]
+```
+
+
+## Summary of parameter estimations
+```{r}
+summary(p0)
+```
+
+
+```{r}
+summary(lambda)
+```
+
+```{r}
+densplot(lambda)
+```
+
+```{r}
+traceplot(lambda)
+```
+
+```{r}
+densplot(p0)
+```
+
+```{r}
+traceplot(p0)
+```
+
+## Assessing Model quality using WAIC
+```{r}
+waic <- ppr_mcmc$WAIC
+waic
+```
+
+
+## Convergence Checks
+
+```{r}
+gelman.diag(lambda)
+```
+
+```{r}
+geweke.diag(lambda)
+```
+
+```{r}
+gelman.plot(p0)
+```
+
+```{r}
+geweke.plot(p0)
+```
+```{r}
+gelman.plot(lambda)
+```
+
+```{r}
+geweke.plot(lambda)
+```
+
+## Predictive checks
+
+### 1. Predictions using estimated parameters 
+
+```{r}
+lambda_mean <- mean(as.matrix(lambda))
+cat("The mean of lambda:", lambda_mean)
+```
+
+```{r}
+p0_mean <- mean(as.matrix(p0))
+cat("The mean of P0:", p0_mean)
+```
+
+
+
+
+### 2. Predictions using MCMC parameter samples and Credible intervals
+
+```{r}
+p0_samples <- as.matrix(p0)
+lambda_samples <- as.matrix(lambda)
+```
+
+
+```{r}
+p_samples <- matrix(NA, ncol = length(p0_samples), nrow = length(y))
+
+```
+
+
+```{r}
+for(i in 1:length(p0_samples)) {
+  
+  # Extract parameter draws 
+  p0 <- p0_samples[i]
+  lambda <- lambda_samples[i]
+  
+  # Calculate p for this iteration
+  p_1 <- p0 * exp(-lambda * d_1)
+  p_2 <- p0 * exp(-lambda * d_2)
+  p_3 <- p0 * exp(-lambda * d_3)
+  
+  p <- (1 - p_1)^t_1 * (1 - p_2)^t_2 * (1 - p_3)^t_3
+  
+  p_tot <- 1 - p
+  
+  # Store in matrix
+  p_samples[,i] <- p_tot
+}
+```
+
+```{r}
+mean_p <- apply(p_samples, 1, mean)
+```
+
+```{r}
+sd_p <- apply(p_samples, 1, sd)
+```
+
+```{r}
+quantiles <- apply(p_samples, 1, quantile, probs = c(0.025, 0.975))
+df$TranProba <- mean_p
+df$CI_95 <- t(quantiles)
+```
+
+
+## Evaluation du modèle
+```{r}
+predicted <- df$TranProba
+actual <- df$infected
+```
+
+
+```{r}
+# Create a prediction object
+prediction <- prediction(predicted, actual)
+
+# Create a performance object to calculate ROC and AUC
+performance <- performance(prediction, "tpr", "fpr")
+```
+
+```{r}
+# Plot ROC curve
+plot(performance)
+```
+
+```{r}
+# Calculate AUC
+auc <- performance(prediction, "auc")
+cat("AUC:", auc@y.values[[1]])
+```
+```{r}
+# Access TPR and FPR values
+tpr <- performance@y.values[[1]]
+fpr <- performance@x.values[[1]]
+```
+
+
+```{r}
+threshold <- 0.5
+predicted_class <- ifelse(predicted >= threshold, 1, 0)
+
+predicted_class <- factor(predicted_class, levels = c(0, 1))
+actual <- factor(actual, levels = c(0, 1))
+
+
+
+# Create a confusion matrix
+confusion_matrix <- confusionMatrix(predicted_class, actual)
+
+# Print the confusion matrix
+print(confusion_matrix)
+```
+
+```{r}
+
+```
+
