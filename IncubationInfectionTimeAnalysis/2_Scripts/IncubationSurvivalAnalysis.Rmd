@@ -100,7 +100,7 @@ survfit2(Surv(timetosymp, status) ~ 1, data = data_an) %>%
 
 ```{r median survival time}
 data_an %>% 
-  filter(status == 1) %>% 
+  filter(status ==1) %>%
   summarize(median_surv = median(timetosymp))
 ```
 
@@ -115,7 +115,7 @@ ggsurvplot_combine(list(correct = survcens, wrong = survcens_ign),data=data_an,x
 
 ```{r survival analysis with censored data icluding exposure}
 survcens2<-survfit(Surv(timetosymp, status) ~ exposure_group, data = data_an)
-
+survcens2
 survfit2(Surv(timetosymp, status) ~exposure_group, data = data_an) %>% 
   ggsurvfit() +
   labs(
@@ -129,4 +129,10 @@ survfit2(Surv(timetosymp, status) ~exposure_group, data = data_an) %>%
 survcens2_ign<-survfit(Surv(timetosymp) ~ exposure_group, data = data_an)
 
 ggsurvplot_combine(list(correct = survcens2, wrong = survcens2_ign),data=data_an,xlim=c(0,40))
+```
+```{r median survival time by exposure}
+data_an %>% 
+  filter(status==1 ) %>%
+  group_by(exposure_group)%>%
+  summarize(median_surv = median(timetosymp))
 ```
