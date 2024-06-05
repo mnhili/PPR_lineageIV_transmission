@@ -1,0 +1,437 @@
+---
+title: 'Modèle de probabilité de transmission : nul model (proba fixe)'
+author: "Manal NHILI"
+output:
+  html_document:
+    theme: paper
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 6
+    toc: yes
+    number_sections: yes
+    always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = TRUE, 
+  warning = TRUE
+)
+
+```
+
+# Import libraries
+
+```{r }
+# Reporting
+library(knitr) # R code chunking in documents
+library(rmarkdown) # Dynamic report generation
+
+# Visualization 
+library(ggplot2) # Graphing/visualization
+library(DT) # Interactive HTML tables
+library(gt) # Nicely formatted plain tables
+library(httpgd) # HTTP graphics device
+
+# Bayesian Modeling & MCMC
+library(nimble) # Building MCMC models  
+library(coda) # MCMC diagnostics
+library(bayesplot) # MCMC diagnostics
+library(postpack) # Post-processing MCMC draws
+library(loo) # Leave-one-out cross validation
+library(mcmcplots) # MCMC traceplots  
+
+# Model Evaluation
+library(Metrics) # Model evaluation metrics
+library(ROCR) # Model performance visualization
+library(caret) # Machine learning model evaluation
+
+# Data Wrangling
+library(tidyr) # Data tidying
+library(dplyr) # Data manipulation
+library(readxl) # Excel data I/O
+```
+
+# Import data
+
+```{r}
+sero <- read_excel("serology_binomial_const.xlsx")
+
+datatable(sero)
+```
+
+# Model
+
+Afin d'estimer le nombre d'animaux infectés après exposition au pathogène lors de différentes expérimentations, un modèle Bayesien a été développé avec le package NIMBLE sous R. Pour chaque expérimentation $i$, le nombre d'animaux positifs $y_i$ suit une loi binomiale de paramètres $n_i$ (nombre total d'animaux) et $P_i$ (probabilité d'avoir un certain nombre d'animaux positifs par experimentation). Cette loi binomiale modélise le nombre aléatoire de positifs parmi $n_i$ animaux pour une probabilité donnée $P_i$. Cette dernière dépend du temps d'exposition $t_i$ et d'une probabilité d'infection de base $p$ commune (fixe) à toutes les expériences. Plus précisément, $P_i = 1 - (1 - p)^{t_i}$, reflétant l'augmentation de la probabilité d'infection avec la durée d'exposition. La probabilité $p$ suit à priori une loi uniforme entre 0,0001 et 0,001. L'objectif de ce modèle est d'estimer les paramètres $p$ et donc $P_i$ à partir des données observées $y_i$ et $t_i$, permettant ainsi de quantifier la dynamique d'infection au cours du temps sur l'ensemble des expérimentations.
+
+## Define Nimble code
+
+```{r eval=FALSE}
+ppr_code <- nimbleCode({
+  # Prior : Uniforme
+  p ~ dunif(0.0001, 0.001)
+  
+  # Likelihood : Bernoulli
+  for (i in 1:nrow(sero)) {
+    p_tot[i] <- 1 - (1 - p)^t[i]
+    y[i] ~ dbinom(size = n[i], prob = p_tot[i])
+  }
+})
+```
+
+## Define inits and data
+
+```{r eval=FALSE}
+y <- sero$Positives
+n <- sero$n
+t<-sero$Time
+data = list(y=y, n=n,t=t)
+
+inits = lapply(1:5, function(i) {
+  list(p = runif(1, 0.0001, 0.001)) 
+})
+```
+
+## Hyperparameters tuning
+
+Tuning hyperparameters of the model by defining a grid of values and fitting the model for each combination of hyperparameters and keeping the one that gives the lowest WAIC.
+
+```{r eval=FALSE}
+
+# Define parameter grids to search over
+niter_grid = c(10000, 50000, 100000)
+thin_grid = c(1, 5, 10) 
+burnin_grid = c(100, 500, 1000, 5000)
+
+# Function to fit model and compute WAIC
+fit_and_compare <- function(niter, thin, burnin) {
+
+  # Fit model using MCMC
+  ppr_mcmc <- nimbleMCMC(code = ppr_code,
+                      data = data,
+                      inits = inits,
+                      thin = thin,
+                      niter = niter,
+                      nburnin = burnin, 
+                      nchains = 5,
+                      monitors = list("p"),
+                      setSeed = 123,
+                      progressBar = TRUE,
+                      samples = TRUE,
+                      summary = TRUE,
+                      WAIC = TRUE)
+
+  # Compute WAIC 
+  waic <- ppr_mcmc$WAIC$WAIC
+  
+  # Return WAIC
+  return(waic)
+}
+
+
+```
+
+```{r eval=FALSE}
+# Vecteur pour stocker tous les WAIC
+waics <- numeric(length(niter_grid)*length(thin_grid)*length(burnin_grid))
+
+# Compteur pour index dans waics
+count <- 1  
+
+# Tester toutes les combinaisons 
+for(niter in niter_grid) {
+  for(thin in thin_grid) {
+    for(burnin in burnin_grid) {
+      
+        waic <- fit_and_compare(niter, thin, burnin)
+        
+        # Stocker ce WAIC
+        waics[count] <- waic
+        count <- count + 1
+      } 
+    }
+  }
+
+
+```
+
+## Getting the best combination of hyperparameters
+
+```{r eval=FALSE}
+# Trouver l'index du meilleur WAIC  
+best <- which.min(waics)
+
+# Extraire les meilleurs paramètres
+iter_index <- ((best - 1) %/% (length(thin_grid) * length(burnin_grid))) + 1
+thin_index <- ((best - 1) %/% length(burnin_grid)) %% length(thin_grid) + 1 
+burnin_index <- ((best - 1) %% length(burnin_grid)) + 1
+
+best_niter <- niter_grid[iter_index]
+best_thin <- thin_grid[thin_index]
+best_burnin <- burnin_grid[burnin_index]
+
+
+# Afficher de façon formatée
+cat("Best Hyperparameters :", "\n")  
+cat(paste0("Niter : ", best_niter, "\n"))
+cat(paste0("Thin : ", best_thin, "\n")) 
+cat(paste0("Burnin : ", best_burnin, "\n"))
+```
+
+## Fitting model with best combination of hyperparameters
+
+```{r eval=FALSE}
+ppr_mcmc <- nimbleMCMC(code = ppr_code,
+                      data = data,
+                      inits = inits,
+                      thin = best_thin,
+                      nburnin = best_burnin, 
+                      monitors = list("p"),
+                      niter = best_niter,
+                      nchains = 5,
+                      setSeed = 123,
+                      progressBar = TRUE,
+                      samples = TRUE,
+                      summary = TRUE,
+                      WAIC = TRUE)
+
+```
+
+```{r}
+#save(ppr_mcmc, inits, file = "p_samples_null_model.RData")
+```
+
+```{r}
+load("p_samples_null_model.RData")
+```
+
+```{r}
+theta_inits <- as.data.frame(inits)
+
+new_names = paste0("chain_", 1:5)
+
+# Change colnames
+colnames(theta_inits) = new_names[1:5]
+
+gt(theta_inits) %>% 
+  tab_header(title = "initial values for MCMC chains")
+```
+
+```{r}
+waic <- ppr_mcmc$WAIC$WAIC
+cat(waic)
+```
+
+```{r}
+codaSamples <- post_convert(ppr_mcmc$samples)
+p <- codaSamples[, "p"]
+```
+
+# Visualization:
+
+We plot the density of the posterior and the trace plot of the chains.
+
+## Density plot
+
+```{r}
+densplot(p)
+```
+
+## Trace plot
+
+```{r}
+traceplot(p)
+```
+
+# Assessing model fit quality using WAIC
+
+```{r}
+waic <- ppr_mcmc$WAIC
+waic
+```
+
+# Summary Statistics
+
+```{r}
+summary(p)
+```
+
+```{r}
+loo_result <- loo(as.matrix(p))
+print(loo_result)
+
+```
+
+```{r}
+loo_result$diagnostics
+```
+
+# Convergence Diagnostics
+
+## Gelman-Rubin diagnostic
+
+The Potential Scale Reduction Factor (PSRF), also known as the **Gelman-Rubin diagnostic** $(\hat{R})$, is a widely used metric for assessing the convergence of Markov Chain Monte Carlo (MCMC) chains in Bayesian analysis. A PSRF equal to 1 is indicative of well-converged chains. The diagnostic compares the variability within each chain to the variability between chains. A value of 1 suggests that the chains have reached a common distribution and have effectively explored the parameter space. In our analysis, the PSRF being equal to 1 provides confidence in the convergence of the MCMC chains, indicating that the chains have reached a stable and consistent estimate of the target distribution.
+
+```{r}
+gelman.diag(p)
+```
+
+```{r}
+gelman.plot(p)
+```
+
+## Geweke's convergence diagnostic
+
+The **Geweke's convergence diagnostic** was applied to assess the convergence of multiple MCMC chains. The diagnostic involves dividing each chain into two windows (typically the first 10% and the last 50% of iterations) and comparing the means of these segments using a z-score. A small z-score and comparable fractions in the two windows indicate convergence.
+
+```{r}
+geweke.diag(p)
+```
+
+```{r}
+geweke.plot(p)
+```
+
+# Plot autocorrelation plots for all chains
+
+Autocorrelation plots were generated to assess the correlation between successive observations in each Markov Chain Monte Carlo (MCMC) chain. The plots below illustrate the autocorrelation function (ACF) for the parameter $p$ in each chain.
+
+```{r}
+autocorr.plot(p)
+```
+
+# Effective sample size
+
+The **effective sample size (ESS)** is a metric used in the context of Markov Chain Monte Carlo (MCMC) sampling to quantify the amount of information or independence captured by the samples. It provides an estimate of how many independent samples in the Markov chain are equivalent to the autocorrelated samples obtained.
+
+$$
+ESS = \frac{n}{1 + 2\sum_{t=1}^{T} \rho_t}
+$$ In this formula:
+
+-   $ESS$ is the effective sample size.
+
+-   $n$ is the total number of samples.
+
+-   $ρ_t$ is the autocorrelation at lag $t$.
+
+-   $T$ is the maximum lag considered in the autocorrelation calculation.
+
+An ESS of 5895.836 suggests good mixing and provides a reasonable estimate of the effective information content in our MCMC samples for the variable **`p`**.
+
+```{r}
+cat(effectiveSize(p)) 
+
+```
+
+# Posterior predictive check
+
+## Simulate replicated data
+
+```{r}
+p <- as.matrix(codaSamples)
+```
+
+## Take a random sample of length 1000 from P estimates
+
+```{r}
+p_sample <- sample(p, 1000)
+```
+
+# Initialisation d'une matrice pour stocker les résultats simulés
+
+```{r}
+N <- nrow(sero)
+ncol = length(p_sample)
+t <- sero$Time
+n <- sero$n
+```
+
+# Boucle pour simuler les résultats pour chaque valeur de p
+
+```{r}
+resultats_simules <- matrix(NA, nrow = N, ncol = ncol)
+
+for (i in 1:length(p_sample)) {
+  
+  p_i <- p_sample[i]
+  
+  p_tot <- 1 - (1 - p_i)^ t
+  
+  simulations <- rbinom(N, size = n, prob = p_tot)
+  resultats_simules[, i] <- simulations
+}
+
+
+```
+
+```{r}
+resultats_simules_df <- as.data.frame(resultats_simules)
+colnames(resultats_simules_df) <- paste0("Sim_", 1:length(p_sample))
+```
+
+```{r}
+datacal <- sero[,c("Event","n", "Positives")]
+names(datacal) <- c("Exp", "N", "obs")
+```
+
+```{r}
+means <- apply(resultats_simules_df, 1, mean)
+print(means)
+
+quantiles <- apply(resultats_simules_df, 1, quantile, 
+                   probs = c(0.025,0.25,0.5,0.75,0.975))
+print(t(quantiles))
+
+res <- as.data.frame(cbind(sero$Event, t(quantiles), round(means)))
+
+names(res)<-c("Exp","CI2.5","CI25","Median","CI75","CI97.5","Mean")
+
+res$CI2.5 <- as.numeric(res$CI2.5)
+res$CI25 <- as.numeric(res$CI25)
+res$Median <- as.numeric(res$Median)
+res$CI75 <- as.numeric(res$CI75)
+res$CI97.5 <- as.numeric(res$CI97.5)
+res$Mean <- as.numeric(res$Mean)
+
+res
+
+```
+
+```{r}
+datacal$sd<-sqrt(datacal$obs*(datacal$N-datacal$obs))
+datacal
+```
+
+# Comparison plot between predictions and real observations
+
+## Mean case
+
+```{r}
+p2<-ggplot(data=res,aes(x=Exp))
+p2<-p2+geom_line(aes(y=Mean),col="red")+geom_point(aes(y=Mean),col="red")
+p2<-p2+labs(title="New Infections by Experiment")+xlab("Exp ")
+p2<-p2+geom_ribbon(aes(ymin=CI2.5,ymax=CI97.5,group=1),fill="red",alpha=0.2)
+p2<-p2+geom_ribbon(aes(ymin=CI25,ymax=CI75,group=1),fill="red",alpha=0.4)
+p2<-p2+geom_point(data=datacal,aes(x=Exp,y=obs))
+p2<-p2+geom_errorbar(data=datacal,aes(x=Exp,ymin=ifelse(obs-sd<0,0,obs-sd),ymax=obs+sd))
+p2<-p2+ylim(0,10)+scale_y_continuous(name ="New Infections", breaks=c(0,1,2,3,4,5,6,7,8,9,10))+ theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+p2<-p2+guides(fill="none")
+p2
+```
+
+## Median case
+
+```{r}
+p2<-ggplot(data=res,aes(x=Exp))
+p2<-p2+geom_line(aes(y=Median),col="red")+geom_point(aes(y=Median),col="red")
+p2<-p2+labs(title="New Infections by Experiment")+xlab("Exp ")
+p2<-p2+geom_ribbon(aes(ymin=CI2.5,ymax=CI97.5,group=1),fill="red",alpha=0.2)
+p2<-p2+geom_ribbon(aes(ymin=CI25,ymax=CI75,group=1),fill="red",alpha=0.4)
+p2<-p2+geom_point(data=datacal,aes(x=Exp,y=obs))
+p2<-p2+geom_errorbar(data=datacal,aes(x=Exp,ymin=ifelse(obs-sd<0,0,obs-sd),ymax=obs+sd))
+p2<-p2+ylim(0,10)+scale_y_continuous(name ="New Infections", breaks=c(0,1,2,3,4,5,6,7,8,9,10))+ theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+p2<-p2+guides(fill="none")
+p2
+```
