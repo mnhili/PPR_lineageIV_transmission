@@ -18,7 +18,7 @@ The data from the UWB sensors were collected and stored in real-time, allowing f
 
 ### Ethical Considerations 
 
-All experimental procedures involving animals were conducted in accordance with the ethical guidelines and regulations set forth by 
+All experimental procedures involving animals were conducted in accordance with the ethical guidelines and regulations set forth by **Name of Organaization**
 
 ## Statistical Models for Estimating Probability of Transmission
 
@@ -134,9 +134,7 @@ We then performed an ANOVA test to compare the number of positive cases across t
 
 The results of the ANOVA test confirmed our hypothesis, showing a significant increase in the number of positive cases with longer exposure durations:
 
-- **F-statistic**: X.XX
-
-- **p-value**: < 0.05
+**Put the table of ANOVA results here !!!!**
 
 This indicates that prolonged exposure to seeder animals significantly raises the likelihood of transmission. Specifically, experiments with exposure durations greater than 24 hours had a higher number of positive cases compared to those with shorter durations. This finding underscores the importance of exposure duration in the dynamics of infectious disease transmission.
 
